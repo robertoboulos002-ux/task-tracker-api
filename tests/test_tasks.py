@@ -137,6 +137,25 @@ def test_patch_same_status_returns_422(client, created_task):
     assert response.status_code == 422
 
 
+def test_patch_invalid_transition_inprogress_to_todo_returns_422(client):
+    created_response = client.post(
+        "/tasks",
+        json={
+            "title": "Reopen task",
+            "priority": "Low",
+            "status": TaskStatus.IN_PROGRESS.value,
+        },
+    )
+    assert created_response.status_code == 201
+
+    response = client.patch(
+        f"/tasks/{created_response.json()['id']}",
+        json={"status": TaskStatus.TODO.value},
+    )
+
+    assert response.status_code == 422
+
+
 def test_delete_existing_returns_204_no_body(client, created_task):
     response = client.delete(f"/tasks/{created_task['id']}")
 
