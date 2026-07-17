@@ -1,0 +1,23 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables (never commit real secrets)
+.env
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Testing cache
+.pytest_cache/
+
+# Editor/IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
