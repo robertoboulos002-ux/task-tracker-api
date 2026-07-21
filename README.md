@@ -57,3 +57,17 @@ Expected response:
 ```json
 {"status": "ok", "timestamp": "2026-07-08T12:34:56.789012+00:00"}
 ```
+
+## Running the frontend
+
+The frontend is a static site (no build step needed), but it must be served over HTTP rather than opened directly as a file (`file://`), or the fetch calls to the backend API will be blocked by the browser.
+
+1. Make sure the backend is running first (see "Running the backend" above) — the frontend expects it at `http://localhost:8000`.
+2. From the project root, start a simple local server for the frontend:
+
+```bash
+   
+   python -m http.server 5500
+```
+
+3. Open your browser to:
