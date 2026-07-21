@@ -28,21 +28,39 @@
             backdrop-filter: blur(6px);
         }
 
-        .header-content h1{margin:0;font-size:clamp(1.4rem,2.6vw,2.1rem);letter-spacing:-0.02em}
-        .header-content p{margin:6px 0 0;color:var(--muted);font-size:0.95rem}
+        .app-header h1 {
+            margin: 0 0 8px;
+            font-size: clamp(1.75rem, 2.2vw, 2.5rem);
+            letter-spacing: -0.04em;
+        }
 
-        .header-actions{display:flex;gap:12px;align-items:center}
-        .header-actions .filter-input{width:220px;max-width:100%;padding:10px 12px;border-radius:999px;border:1px solid rgba(255,255,255,0.08);background-color:#0b1220;color:#e6eef8;box-shadow:inset 0 1px 0 rgba(255,255,255,0.04)}
-        .header-actions .filter-input::placeholder{color:var(--muted)}
-        .header-actions .filter-input:focus{outline:none;border-color:rgba(96,165,250,0.7);box-shadow:0 0 0 3px rgba(96,165,250,0.16)}
-        #new-task-button{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(90deg,var(--blue),#3b82f6);color:white;border-radius:999px;border:none;cursor:pointer;font-weight:700;box-shadow:0 8px 24px rgba(59,130,246,0.18)}
-        #new-task-button svg{width:16px;height:16px;flex:0 0 16px;opacity:0.98}
-        #new-task-button:focus{outline:3px solid rgba(96,165,250,0.18);outline-offset:2px}
+        .app-header p {
+            margin: 0;
+            max-width: 50ch;
+            color: #4b5563;
+        }
 
-        main{max-width:1200px;margin:20px auto;padding:18px}
+        main {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 24px;
+        }
 
-        .board{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;align-items:start}
-        @media (max-width:520px){.board{grid-template-columns:1fr;gap:12px}}
+        /* Responsive three-column board. Uses auto-fit to collapse to one column */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            align-items: start;
+        }
+
+        /* Extra small screens: make single-column layout tighter */
+        @media (max-width: 420px) {
+            .board {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+        }
 
         .column{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);border-radius:var(--radius-lg);padding:0;display:flex;flex-direction:column;min-height:160px}
         .column-header{padding:16px 18px;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
@@ -58,17 +76,99 @@
         .card-title{margin:0;font-size:1rem;font-weight:700;color:#f8fafc}
         .card-description{margin:0;color:var(--muted);font-size:0.92rem;white-space:pre-wrap}
 
-        .card-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-        .priority-pill{padding:6px 12px;border-radius:999px;font-weight:700;font-size:0.78rem;letter-spacing:0.01em;text-transform:uppercase}
-        .priority-pill.low{background:rgba(110,231,183,0.08);color:#34d399}
-        .priority-pill.medium{background:rgba(250,204,21,0.06);color:#f59e0b}
-        .priority-pill.high{background:rgba(248,113,113,0.06);color:#f87171}
-        .card-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-        .tag-chip{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:0.78rem;color:var(--muted);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08)}
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
 
-        .empty-placeholder{border-radius:12px;padding:14px;border:1px dashed rgba(255,255,255,0.04);background:transparent;color:var(--muted);min-height:84px;display:grid;place-content:center}
+        .priority-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
 
-        .error-card{background:linear-gradient(180deg, rgba(248,113,113,0.06), rgba(248,113,113,0.02));border:1px solid rgba(248,113,113,0.12);color:#fecaca;padding:14px;border-radius:12px}
+        .priority-pill[data-priority="Low"],
+        .priority-pill.low {
+            background: #ecfdf5;
+            color: #166534;
+        }
+
+        .priority-pill[data-priority="Medium"],
+        .priority-pill.medium {
+            background: #fffbeb;
+            color: #92400e;
+        }
+
+        .priority-pill[data-priority="High"],
+        .priority-pill.high {
+            background: #fef2f2;
+            color: #991b1b;
+        }
+
+        .skeleton-card,
+        .error-card,
+        .empty-placeholder {
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .skeleton-card {
+            position: relative;
+            overflow: hidden;
+            background: #edf2f7;
+            min-height: 90px;
+            border: 1px solid #dbe4ee;
+        }
+
+        .skeleton-card::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.7) 50%, rgba(255,255,255,0) 100%);
+            transform: translateX(-120%);
+            animation: shimmer 1.4s infinite;
+        }
+
+        .skeleton-line { background: #e2e8f0; border-radius: 999px; height: 12px; width: 100%; }
+        .skeleton-line.short { width: 55%; }
+        .skeleton-line.medium { width: 75%; }
+        .skeleton-line.tall { height: 16px; }
+
+        .skeleton-group { display: grid; gap: 8px; }
+
+        .empty-placeholder {
+            border: 2px dashed #d1d5db;
+            background: #f8fafc;
+            color: #6b7280;
+            text-align: center;
+            min-height: 90px;
+            display: grid;
+            place-content: center;
+        }
+
+        .empty-placeholder p { margin: 0; line-height: 1.5; }
+
+        .error-card {
+            background: #fff1f2;
+            border: 1px solid #fbc8d0;
+            color: #9b2c2c;
+            box-shadow: 0 4px 12px rgba(251, 199, 208, 0.25);
+            display: grid;
+            gap: 8px;
+        }
+
+        .error-card strong { display: block; color: #7f1d1d; font-size: 0.98rem; }
+        .error-card p { margin: 0; color: #831843; font-size: 0.95rem; line-height: 1.4; }
 
         .modal-overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:linear-gradient(0deg,rgba(2,6,23,0.78),rgba(2,6,23,0.78));backdrop-filter:blur(8px);z-index:1000;padding:20px}
         .modal-overlay.open{display:flex}
@@ -100,13 +200,7 @@
             <p>Change a task's status using the dropdown on each card.</p>
         </div>
         <div class="header-actions">
-            <input id="tag-filter-input" class="filter-input" type="search" placeholder="Filter by tag" aria-label="Filter tasks by tag" />
-            <button type="button" id="new-task-button" aria-label="Create new task">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                <span>New Task</span>
-            </button>
+            <button type="button" id="new-task-button">New Task</button>
         </div>
     </header>
     <main>
