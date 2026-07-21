@@ -32,6 +32,9 @@
         .header-content p{margin:6px 0 0;color:var(--muted);font-size:0.95rem}
 
         .header-actions{display:flex;gap:12px;align-items:center}
+        .header-actions .filter-input{width:220px;max-width:100%;padding:10px 12px;border-radius:999px;border:1px solid rgba(255,255,255,0.08);background-color:#0b1220;color:#e6eef8;box-shadow:inset 0 1px 0 rgba(255,255,255,0.04)}
+        .header-actions .filter-input::placeholder{color:var(--muted)}
+        .header-actions .filter-input:focus{outline:none;border-color:rgba(96,165,250,0.7);box-shadow:0 0 0 3px rgba(96,165,250,0.16)}
         #new-task-button{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(90deg,var(--blue),#3b82f6);color:white;border-radius:999px;border:none;cursor:pointer;font-weight:700;box-shadow:0 8px 24px rgba(59,130,246,0.18)}
         #new-task-button svg{width:16px;height:16px;flex:0 0 16px;opacity:0.98}
         #new-task-button:focus{outline:3px solid rgba(96,165,250,0.18);outline-offset:2px}
@@ -60,6 +63,8 @@
         .priority-pill.low{background:rgba(110,231,183,0.08);color:#34d399}
         .priority-pill.medium{background:rgba(250,204,21,0.06);color:#f59e0b}
         .priority-pill.high{background:rgba(248,113,113,0.06);color:#f87171}
+        .card-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+        .tag-chip{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:0.78rem;color:var(--muted);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08)}
 
         .empty-placeholder{border-radius:12px;padding:14px;border:1px dashed rgba(255,255,255,0.04);background:transparent;color:var(--muted);min-height:84px;display:grid;place-content:center}
 
@@ -95,6 +100,7 @@
             <p>Change a task's status using the dropdown on each card.</p>
         </div>
         <div class="header-actions">
+            <input id="tag-filter-input" class="filter-input" type="search" placeholder="Filter by tag" aria-label="Filter tasks by tag" />
             <button type="button" id="new-task-button" aria-label="Create new task">
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <path d="M12 5v14M5 12h14" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
@@ -133,8 +139,16 @@
                         </select>
                     </div>
                     <div class="modal-field">
+                        <label for="edit-task-due-date-input">Due date</label>
+                        <input id="edit-task-due-date-input" name="due_date" type="date" />
+                    </div>
+                    <div class="modal-field">
                         <label for="edit-task-assignee-input">Assignee</label>
                         <input id="edit-task-assignee-input" name="assignee" type="text" maxlength="200" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="edit-task-tags-input">Tags</label>
+                        <input id="edit-task-tags-input" name="tags" type="text" maxlength="200" placeholder="Comma-separated tags" />
                     </div>
                 </div>
                 <div class="modal-actions">
@@ -164,14 +178,19 @@
         let tasks = [];
         let boardState = 'loading';
         let boardError = '';
+        let activeTagFilter = '';
 
-        async function fetchTasks() {
+        async function fetchTasks(tagFilter = activeTagFilter) {
+            activeTagFilter = (tagFilter || '').trim();
             boardState = 'loading';
             boardError = '';
             render();
 
+            const filterQuery = activeTagFilter ? `?tag=${encodeURIComponent(activeTagFilter)}` : '';
+            const url = `${API_BASE}/tasks${filterQuery}`;
+
             try {
-                const response = await fetch(`${API_BASE}/tasks`);
+                const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error(`Server returned ${response.status}`);
                 }
@@ -303,10 +322,12 @@
                 return `<option value="${key}" ${selected}>${STATUS_LABELS[key]}</option>`;
             }).join('');
 
+            const tagChips = (task.tags || []).map(tag => `<span class="tag-chip">${escapeHtml(tag)}</span>`).join('');
             card.innerHTML = `
                 <div>
                     <h3 class="card-title">${escapeHtml(task.title || 'Untitled task')}</h3>
                     <p class="card-description">${escapeHtml(task.description || '')}</p>
+                    ${tagChips ? `<div class="card-tags">${tagChips}</div>` : ''}
                 </div>
                 <div class="card-footer">
                     <span class="priority-pill ${String(task.priority || '').toLowerCase()}">${escapeHtml(task.priority || 'Low')}</span>
@@ -326,6 +347,13 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#39;');
+        }
+
+        function parseTagInput(value) {
+            return String(value || '')
+                .split(',')
+                .map(tag => tag.trim())
+                .filter(tag => tag.length > 0);
         }
 
         // Shows a persistent error banner above the board (e.g. failed status update)
@@ -369,13 +397,17 @@
             const descriptionInput = document.querySelector('#edit-task-description-input');
             const assigneeInput = document.querySelector('#edit-task-assignee-input');
             const prioritySelect = document.querySelector('#edit-task-priority-select');
+            const dueDateInput = document.querySelector('#edit-task-due-date-input');
             const modalTitle = document.querySelector('#edit-task-title');
             const submitButton = document.querySelector('#edit-task-submit');
 
             titleInput.value = task.title || '';
             descriptionInput.value = task.description || '';
             assigneeInput.value = task.assignee || '';
+            const tagsInput = document.querySelector('#edit-task-tags-input');
+            tagsInput.value = (task.tags || []).join(', ');
             prioritySelect.value = task.priority || 'Low';
+            dueDateInput.value = task.due_date || '';
             modalTitle.textContent = 'Edit Task';
             submitButton.textContent = 'Save changes';
             setModalError('');
@@ -393,13 +425,17 @@
             const descriptionInput = document.querySelector('#edit-task-description-input');
             const assigneeInput = document.querySelector('#edit-task-assignee-input');
             const prioritySelect = document.querySelector('#edit-task-priority-select');
+            const dueDateInput = document.querySelector('#edit-task-due-date-input');
             const modalTitle = document.querySelector('#edit-task-title');
             const submitButton = document.querySelector('#edit-task-submit');
 
             titleInput.value = '';
             descriptionInput.value = '';
             assigneeInput.value = '';
+            const tagsInput = document.querySelector('#edit-task-tags-input');
+            tagsInput.value = '';
             prioritySelect.value = 'Low';
+            dueDateInput.value = '';
             modalTitle.textContent = 'New Task';
             submitButton.textContent = 'Create task';
             setModalError('');
@@ -424,13 +460,17 @@
             const titleInput = document.querySelector('#edit-task-title-input');
             const descriptionInput = document.querySelector('#edit-task-description-input');
             const assigneeInput = document.querySelector('#edit-task-assignee-input');
+            const tagsInput = document.querySelector('#edit-task-tags-input');
             const prioritySelect = document.querySelector('#edit-task-priority-select');
+            const dueDateInput = document.querySelector('#edit-task-due-date-input');
 
             const payload = {
                 title: titleInput.value.trim(),
                 description: descriptionInput.value.trim() || null,
                 assignee: assigneeInput.value.trim() === '' ? null : assigneeInput.value.trim(),
                 priority: prioritySelect.value,
+                due_date: dueDateInput.value ? dueDateInput.value : null,
+                tags: parseTagInput(tagsInput.value),
             };
 
             const isCreate = activeTaskMode === 'create';
@@ -636,6 +676,22 @@
             const newTaskButton = document.querySelector('#new-task-button');
             if (newTaskButton) {
                 newTaskButton.addEventListener('click', openCreateModal);
+            }
+
+            const tagFilterInput = document.querySelector('#tag-filter-input');
+            if (tagFilterInput) {
+                tagFilterInput.value = activeTagFilter;
+                tagFilterInput.addEventListener('keydown', async (ev) => {
+                    if (ev.key === 'Enter') {
+                        ev.preventDefault();
+                        await fetchTasks(tagFilterInput.value);
+                    }
+                });
+                tagFilterInput.addEventListener('input', async () => {
+                    if (tagFilterInput.value.trim() === '') {
+                        await fetchTasks('');
+                    }
+                });
             }
 
             const editModalOverlay = document.querySelector('#edit-task-modal');

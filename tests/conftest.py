@@ -30,6 +30,6 @@ def client():
 
 @pytest.fixture()
 def created_task(client):
-    response = client.post("/tasks", json={"title": "fixture task"})
+    response = client.post("/tasks", json={"title": "fixture task", "priority": "Medium"})
     assert response.status_code == 201
     return response.json()

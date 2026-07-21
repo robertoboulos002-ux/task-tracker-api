@@ -7,6 +7,7 @@ def test_create_task_valid_returns_201_with_full_body(client):
         json={
             "title": "Write API tests",
             "description": "Add pytest coverage for task creation",
+            "priority": "Medium",
         },
     )
 
@@ -61,14 +62,218 @@ def test_list_tasks_filter_by_status_no_match_returns_200_and_empty_list(client)
 
 
 def test_list_tasks_filter_by_priority_returns_only_matches(client):
-    client.post("/tasks", json={"title": "low task", "priority": "low"})
-    client.post("/tasks", json={"title": "high task", "priority": "high"})
+    client.post("/tasks", json={"title": "low task", "priority": "Low"})
+    client.post("/tasks", json={"title": "high task", "priority": "High"})
 
-    response = client.get("/tasks", params={"priority": "high"})
+    response = client.get("/tasks", params={"priority": "High"})
 
     assert response.status_code == 200
     assert len(response.json()) == 1
     assert response.json()[0]["title"] == "high task"
+
+
+def test_create_task_with_due_date_returns_it_in_response(client):
+    response = client.post(
+        "/tasks",
+        json={
+            "title": "due task",
+            "priority": "Low",
+            "due_date": "2099-12-31",
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["due_date"] == "2099-12-31"
+    assert body["is_overdue"] is False
+
+
+def test_create_task_with_tags_returns_them_in_response(client):
+    response = client.post(
+        "/tasks",
+        json={
+            "title": "tagged task",
+            "priority": "Medium",
+            "tags": [" urgent ", "Frontend"],
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["tags"] == ["urgent", "Frontend"]
+
+
+def test_create_task_with_invalid_tags_returns_422(client):
+    response = client.post(
+        "/tasks",
+        json={
+            "title": "bad tags",
+            "priority": "Low",
+            "tags": [" ", "valid"],
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_task_with_duplicate_tags_returns_422(client):
+    response = client.post(
+        "/tasks",
+        json={
+            "title": "duplicate tags",
+            "priority": "Low",
+            "tags": ["urgent", "Urgent"],
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_task_with_too_many_tags_returns_422(client):
+    response = client.post(
+        "/tasks",
+        json={
+            "title": "too many tags",
+            "priority": "Low",
+            "tags": [f"tag{i}" for i in range(11)],
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_task_with_long_tag_returns_422(client):
+    response = client.post(
+        "/tasks",
+        json={
+            "title": "long tag",
+            "priority": "Low",
+            "tags": ["a" * 51],
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_patch_tags_replaces_existing_tags(client, created_task):
+    client.patch(f"/tasks/{created_task['id']}", json={"tags": ["first"]})
+
+    response = client.patch(
+        f"/tasks/{created_task['id']}",
+        json={"tags": ["second"]},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["tags"] == ["second"]
+
+
+def test_patch_without_tags_leaves_existing_tags_untouched(client):
+    created = client.post(
+        "/tasks",
+        json={"title": "keep tags", "priority": "Medium", "tags": ["keep"]},
+    )
+    task_id = created.json()["id"]
+
+    response = client.patch(
+        f"/tasks/{task_id}",
+        json={"title": "updated title"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["tags"] == ["keep"]
+
+
+def test_list_tasks_filter_by_tag_returns_only_matches(client):
+    client.post(
+        "/tasks",
+        json={"title": "urgent task", "priority": "Low", "tags": ["urgent"]},
+    )
+    client.post(
+        "/tasks",
+        json={"title": "normal task", "priority": "Low", "tags": ["other"]},
+    )
+
+    response = client.get("/tasks", params={"tag": "urgent"})
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+    assert response.json()[0]["title"] == "urgent task"
+
+
+def test_create_task_with_malformed_due_date_returns_422(client):
+    response = client.post(
+        "/tasks",
+        json={
+            "title": "invalid due date",
+            "priority": "low",
+            "due_date": "not-a-date",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_task_with_past_due_date_and_nondone_status_is_overdue_true(client):
+    response = client.post(
+        "/tasks",
+        json={
+            "title": "overdue task",
+            "priority": "High",
+            "status": TaskStatus.IN_PROGRESS.value,
+            "due_date": "2000-01-01",
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["due_date"] == "2000-01-01"
+    assert body["status"] == TaskStatus.IN_PROGRESS.value
+    assert body["is_overdue"] is True
+
+
+def test_create_task_with_past_due_date_and_done_status_is_overdue_false(client):
+    response = client.post(
+        "/tasks",
+        json={
+            "title": "completed overdue task",
+            "priority": "High",
+            "status": TaskStatus.DONE.value,
+            "due_date": "2000-01-01",
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["due_date"] == "2000-01-01"
+    assert body["status"] == TaskStatus.DONE.value
+    assert body["is_overdue"] is False
+
+
+def test_list_tasks_overdue_filter_returns_only_overdue(client):
+    response1 = client.post(
+        "/tasks",
+        json={"title": "past task", "priority": "Low", "due_date": "2000-01-01"},
+    )
+    response2 = client.post(
+        "/tasks",
+        json={"title": "future task", "priority": "Low", "due_date": "2099-01-01"},
+    )
+    response3 = client.post(
+        "/tasks",
+        json={"title": "done past task", "priority": "Low", "status": "Done", "due_date": "2000-01-01"},
+    )
+
+    assert response1.status_code == 201
+    assert response2.status_code == 201
+    assert response3.status_code == 201
+
+    response = client.get("/tasks", params={"overdue": "true"})
+
+    assert response.status_code == 200
+    tasks = response.json()
+    assert len(tasks) == 1
+    assert tasks[0]["title"] == "past task"
+    assert tasks[0]["is_overdue"] is True
 
 
 def test_get_task_by_id_returns_task(client, created_task):

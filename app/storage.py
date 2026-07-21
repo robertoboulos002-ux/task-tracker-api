@@ -55,6 +55,8 @@ def add_task(payload: TaskCreate) -> TaskResponse:
         "status": payload.status.value,
         "priority": payload.priority.value,
         "assignee": payload.assignee,
+        "due_date": payload.due_date.isoformat() if payload.due_date is not None else None,
+        "tags": payload.tags,
         "created_at": now.isoformat(),
         "updated_at": now.isoformat(),
     }
@@ -74,17 +76,34 @@ def get_task(task_id: str) -> Optional[TaskResponse]:
     return None
 
 
-def list_tasks(status: Optional[TaskStatus] = None, priority: Optional[TaskPriority] = None) -> list[TaskResponse]:
-    """Return all tasks, optionally filtered by status and/or priority."""
+def list_tasks(
+    status: Optional[TaskStatus] = None,
+    priority: Optional[str] = None,
+    overdue: Optional[bool] = None,
+    tag: Optional[str] = None,
+) -> list[TaskResponse]:
+    """Return all tasks, optionally filtered by status, priority, overdue state, and tag."""
     tasks = _read_all()
 
     if status is not None:
         tasks = [t for t in tasks if t["status"] == status.value]
 
     if priority is not None:
-        tasks = [t for t in tasks if t["priority"] == priority.value]
+        tasks = [t for t in tasks if t["priority"] == priority]
 
-    return [TaskResponse(**task) for task in tasks]
+    if tag is not None:
+        normalized_tag = tag.strip().lower()
+        tasks = [
+            t
+            for t in tasks
+            if any(existing_tag.lower() == normalized_tag for existing_tag in t.get("tags", []))
+        ]
+
+    task_responses = [TaskResponse(**task) for task in tasks]
+    if overdue is not None:
+        task_responses = [task for task in task_responses if task.is_overdue is overdue]
+
+    return task_responses
 
 
 def update_task(task_id: str, payload: TaskUpdate) -> Optional[TaskResponse]:
@@ -109,6 +128,9 @@ def update_task(task_id: str, payload: TaskUpdate) -> Optional[TaskResponse]:
 
             if "priority" in update_data and update_data["priority"] is not None:
                 update_data["priority"] = TaskPriority(update_data["priority"]).value
+
+            if "due_date" in update_data and update_data["due_date"] is not None:
+                update_data["due_date"] = update_data["due_date"].isoformat()
 
             task.update(update_data)
             task["updated_at"] = datetime.now(timezone.utc).isoformat()

@@ -11,7 +11,7 @@ import os
 from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -59,8 +59,13 @@ def create_task(payload: TaskCreate) -> TaskResponse:
 
 
 @app.get("/tasks", response_model=list[TaskResponse], tags=["tasks"])
-def list_tasks(status: Optional[TaskStatus] = None, priority: Optional[str] = None) -> list[TaskResponse]:
-    return storage.list_tasks(status=status, priority=priority)
+def list_tasks(
+    status: Optional[TaskStatus] = None,
+    priority: Optional[str] = None,
+    overdue: Optional[bool] = None,
+    tag: Optional[str] = Query(default=None, min_length=1, description="Optional tag to filter tasks by."),
+) -> list[TaskResponse]:
+    return storage.list_tasks(status=status, priority=priority, overdue=overdue, tag=tag)
 
 
 @app.get("/tasks/{task_id}", response_model=TaskResponse, tags=["tasks"])
