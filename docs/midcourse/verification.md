@@ -12,7 +12,9 @@ tests/ -v
 27 passed, 1 failed
 ```
 
-**Note on the one failure:** `test_patch_same_status_returns_422` fails on this codebase — it expects a no-op status update (e.g. `ToDo` → `ToDo`) to return 422, but the API currently returns 200. This is a **pre-existing issue unrelated to the due-date/overdue feature** (it concerns the status-transition business rule in `app/business_rules.py`, not `due_date` or `is_overdue`). It is called out here rather than hidden, and is a candidate for a separate bug ticket rather than something fixed silently inside this feature's scope.
+**Note on the one failure (resolved):** `test_patch_same_status_returns_422` originally failed — it expects a no-op status update (e.g. `ToDo` → `ToDo`) to return 422, but the API was returning 200. Root cause: `validate_status_transition()` in `app/business_rules.py` had an explicit shortcut (`if current_status == new_status: return True`) that treated a no-op as an automatically valid transition. This was removed — the existing `_ALLOWED_TRANSITIONS` map already excludes same-status "transitions" on its own (e.g. `TaskStatus.TODO`'s allowed set is `{IN_PROGRESS}`, which does not include `TODO`), so no additional logic was needed beyond removing the shortcut.
+
+**Result after fix:** full suite re-run — **36 passed, 0 failed.**
 
 ### Backend test results (due_date + overdue specific)
 
@@ -88,7 +90,7 @@ tests/ -v
 35 passed, 1 failed
 ```
 
-The one failure is the same pre-existing, unrelated issue documented in Feature 1 (`test_patch_same_status_returns_422` — a no-op status PATCH returns 200 instead of the expected 422; concerns the status-transition rule, not tags or due_date). No new failures were introduced by the tags implementation.
+The one failure was the pre-existing `test_patch_same_status_returns_422` issue documented in Feature 1 (unrelated to tags). It has since been **fixed** — see the updated Feature 1 baseline section above. The full suite now passes: **36 passed, 0 failed.**
 
 ### Backend test results (tags specific)
 
@@ -128,4 +130,41 @@ All manual checks matched expected behavior. The 422 case surfaced as a PowerShe
 
 ### Break Test evidence
 
-*(Recommended next step, not yet performed: break the duplicate-tag rejection — e.g. temporarily disable the case-insensitive comparison — and confirm `test_create_task_with_duplicate_tags_returns_422` fails, then revert and confirm it passes again. This is the strongest candidate for a tags Break Test since, like the overdue-filter logic in Feature 1, it depends on a comparison that's easy to accidentally weaken without an obvious symptom.)*
+**Break Test 2 — target: duplicate-tag rejection**
+
+Change made: in `_normalize_tags()` in `app/models.py`, temporarily disabled the duplicate-tag rejection by replacing the `raise ValueError(...)` with `pass`, while leaving `seen_lower.add(lower_tag)` in place — so a duplicate tag would silently pass through instead of being rejected:
+
+```python
+lower_tag = trimmed.lower()
+if lower_tag in seen_lower:
+    pass  # BREAK TEST: duplicate rejection disabled
+seen_lower.add(lower_tag)
+```
+
+Result: **test failed as expected**
+```
+tests/test_tasks.py::test_create_task_with_duplicate_tags_returns_422 FAILED
+  assert response.status_code == 422
+  E    assert 201 == 422
+  E     +  where 201 = <Response [201 Created]>.status_code
+```
+
+Sending `tags: ["urgent", "Urgent"]` with the check disabled returned `201 Created` instead of the expected `422` — confirming the test correctly detects when duplicate-tag rejection is broken.
+
+Reverted the change (restored the `raise ValueError(...)`), reran the same test:
+```
+tests/test_tasks.py::test_create_task_with_duplicate_tags_returns_422 PASSED
+1 passed, 30 deselected in 0.04s
+```
+
+Confirms the test genuinely exercises the duplicate-tag validation logic and correctly passes once the real rule is restored.
+
+### Full suite re-run after both fixes
+
+```
+tests/ -v
+36 items collected
+36 passed in 0.75s
+```
+
+All tests pass, including the previously-failing `test_patch_same_status_returns_422` and the tag-related tests exercised during the Break Test above.
