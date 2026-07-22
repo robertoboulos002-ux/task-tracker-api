@@ -62,11 +62,11 @@ Expected response:
 
 The frontend is a static site (no build step needed), but it must be served over HTTP rather than opened directly as a file (`file://`), or the fetch calls to the backend API will be blocked by the browser.
 
-1. Make sure the backend is running first (see "Running the backend" above) — the frontend expects it at `http://localhost:8000`.
+1. Make sure the backend is running first (see "Running the server" above) — the frontend expects it at `http://localhost:8000`.
 2. From the project root, start a simple local server for the frontend:
 
 ```bash
-   
+   cd frontend
    python -m http.server 5500
 ```
 

@@ -5,8 +5,9 @@ Enforces this workflow:
     ToDo -> InProgress -> Done
     Done -> InProgress   (reopening a completed task)
 
-No skipping stages (ToDo -> Done directly is not allowed) and no moving
-directly from Done back to ToDo.
+No skipping stages (ToDo -> Done directly is not allowed), no moving
+directly from Done back to ToDo, and no no-op transitions (setting a
+status to its own current value is rejected).
 """
 
 from app.models import TaskStatus
@@ -34,8 +35,7 @@ def validate_status_transition(current_status: TaskStatus, new_status: TaskStatu
     """
     Return True if moving from current_status to new_status is a valid transition.
 
-    Setting a status to its own current value (no-op) is treated as valid.
+    Setting a status to its own current value (no-op) is treated as invalid —
+    the caller must choose a genuinely different, allowed next status.
     """
-    if current_status == new_status:
-        return True
     return new_status in _ALLOWED_TRANSITIONS.get(current_status, set())
