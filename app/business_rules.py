@@ -34,8 +34,7 @@ def validate_status_transition(current_status: TaskStatus, new_status: TaskStatu
     """
     Return True if moving from current_status to new_status is a valid transition.
 
-    Setting a status to its own current value (no-op) is treated as valid.
+    Setting a status to its own current value (no-op) is NOT a valid transition
+    and is rejected, same as any other status not in the allowed set.
     """
-    if current_status == new_status:
-        return True
     return new_status in _ALLOWED_TRANSITIONS.get(current_status, set())
