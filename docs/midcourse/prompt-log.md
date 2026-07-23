@@ -99,7 +99,20 @@ While manually testing the backend with curl, a request was sent with `"status":
 >
 > Don't touch due_date/overdue UI, don't add tag colors or a management screen, don't change backend code.
 
-**What AI returned / accepted / edited / rejected:** *(fill in once run — note whether it picked a comma-separated input or a chip input, whether the error-surfacing worked on the first attempt, and whether the card badge styling needed adjustment to avoid clashing with the overdue badge.)*
+**What AI returned:** Added a single comma-separated text input (`#edit-task-tags-input`) to the modal rather than a chip-style input, with a `parseTagInput()` helper that splits on commas, trims each entry, and drops empty ones before sending. Wired `tags: parseTagInput(tagsInput.value)` into the same create/update payload as the other fields. Added a pre-fill step that joins `task.tags` back into a comma-separated string when opening the edit modal. On the card, added `tagChips` markup (`.tag-chip` spans inside a `.card-tags` wrapper) rendered only when a task has tags. 422s are surfaced through the existing `setModalError()` path, which already parses `json.detail` from the response — no special-casing was needed for tag errors.
+
+**Accepted / edited / rejected:** Partially accepted, one gap found on review. The comma-separated input (over a chip input) was accepted — it's simpler and consistent with the plain-text style of the rest of the form. Error surfacing was accepted as-is: manually triggering a 422 (11+ tags) showed the message in the modal banner correctly on the first attempt. Pre-fill was accepted after checking it round-trips correctly (edit a task with tags, reopen the modal, values are still comma-separated as expected). **Rejected/incomplete:** the AI referenced `.tag-chip` and `.card-tags` in the rendering JS but never added matching CSS rules, so tags were rendering as unstyled inline text rather than actual chips. Caught by inspecting the stylesheet directly rather than just eyeballing the rendered page. Fixed in Prompt 3 below.
+
+---
+
+### Prompt 3 — Fix missing tag chip styling
+
+**Prompt sent:**
+> The tags feature from the previous prompt renders `.tag-chip` spans inside a `.card-tags` container in the card markup, but there's no CSS for either class, so tags currently show up as plain unstyled text on the card. Add CSS for `.card-tags` (flex-wrapping row of chips) and `.tag-chip` (small rounded pill), styled consistently with the existing `.priority-pill` treatment. Don't change the JS/markup, don't touch due date or overdue code, and don't add tag colors per-tag.
+
+**What AI returned:** Added a `.card-tags` flex-wrap container and a `.tag-chip` rounded-pill style (rounded corners, small font, single accent color) placed next to the existing `.priority-pill` rules for consistency.
+
+**Accepted / edited / rejected:** Accepted as-is after visually confirming in the browser that tags now render as pills instead of plain text, and that the chips wrap correctly on cards with several tags without breaking the card layout.
 
 ---
 
