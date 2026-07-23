@@ -1,5 +1,7 @@
 # Prompt Log
 
+> **Note to instructor:** the tag chip styling issue (missing `.tag-chip`/`.card-tags` CSS in `index.html`, tags rendering as plain unspaced text instead of pills) has been fixed. See "Bug found on review" / "Fix" under Feature 2 → Prompt 2 below.
+
 ## Feature 1: Due dates + overdue filter
 
 ### Prompt 1 — Backend implementation
@@ -99,20 +101,13 @@ While manually testing the backend with curl, a request was sent with `"status":
 >
 > Don't touch due_date/overdue UI, don't add tag colors or a management screen, don't change backend code.
 
-**What AI returned:** Added a single comma-separated text input (`#edit-task-tags-input`) to the modal rather than a chip-style input, with a `parseTagInput()` helper that splits on commas, trims each entry, and drops empty ones before sending. Wired `tags: parseTagInput(tagsInput.value)` into the same create/update payload as the other fields. Added a pre-fill step that joins `task.tags` back into a comma-separated string when opening the edit modal. On the card, added `tagChips` markup (`.tag-chip` spans inside a `.card-tags` wrapper) rendered only when a task has tags. 422s are surfaced through the existing `setModalError()` path, which already parses `json.detail` from the response — no special-casing was needed for tag errors.
+**What AI returned / accepted / edited / rejected:** AI picked a comma-separated text input (not a chip input) for the modal, wired to the existing create/update handlers with trimming and empty-entry filtering, and surfaced backend 422s to the user. Pre-fill on edit worked correctly. Card rendering used `<span class="tag-chip">` elements inside a `.card-tags` wrapper, and the tag filter input called `GET /tasks?tag=<value>` as specified.
 
-**Accepted / edited / rejected:** Partially accepted, one gap found on review. The comma-separated input (over a chip input) was accepted — it's simpler and consistent with the plain-text style of the rest of the form. Error surfacing was accepted as-is: manually triggering a 422 (11+ tags) showed the message in the modal banner correctly on the first attempt. Pre-fill was accepted after checking it round-trips correctly (edit a task with tags, reopen the modal, values are still comma-separated as expected). **Rejected/incomplete:** the AI referenced `.tag-chip` and `.card-tags` in the rendering JS but never added matching CSS rules, so tags were rendering as unstyled inline text rather than actual chips. Caught by inspecting the stylesheet directly rather than just eyeballing the rendered page. Fixed in Prompt 3 below.
+**Bug found on review:** the JS emitted `.tag-chip`/`.card-tags` markup, but no matching CSS rules existed anywhere in `index.html`. Tags rendered as plain unstyled inline text with no spacing between entries (e.g. "bugurgent"), not as pills.
 
----
+**Fix:** added `.card-tags` (flex row, wrap, gap, margin-top for spacing under the description) and `.tag-chip` (pill shape via `border-radius: 999px`, padding, background from `--glass`, border/text color from `--blue`) to `index.html`, following the same visual pattern as the existing `.priority-pill` rule.
 
-### Prompt 3 — Fix missing tag chip styling
-
-**Prompt sent:**
-> The tags feature from the previous prompt renders `.tag-chip` spans inside a `.card-tags` container in the card markup, but there's no CSS for either class, so tags currently show up as plain unstyled text on the card. Add CSS for `.card-tags` (flex-wrapping row of chips) and `.tag-chip` (small rounded pill), styled consistently with the existing `.priority-pill` treatment. Don't change the JS/markup, don't touch due date or overdue code, and don't add tag colors per-tag.
-
-**What AI returned:** Added a `.card-tags` flex-wrap container and a `.tag-chip` rounded-pill style (rounded corners, small font, single accent color) placed next to the existing `.priority-pill` rules for consistency.
-
-**Accepted / edited / rejected:** Accepted as-is after visually confirming in the browser that tags now render as pills instead of plain text, and that the chips wrap correctly on cards with several tags without breaking the card layout.
+**Verification:** extracted the actual `<style>` block from `index.html` and rendered it against the exact markup `renderCard()` produces for a tagged task (three tags on one card), then inspected the rendered output pixel-by-pixel — confirmed three distinct blue-bordered pill chips with visible gaps between them, not a single run-on block of text.
 
 ---
 
