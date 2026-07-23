@@ -71,3 +71,4 @@ The frontend is a static site (no build step needed), but it must be served over
 ```
 
 3. Open your browser to:
+http://localhost:5500
